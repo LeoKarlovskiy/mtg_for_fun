@@ -6,6 +6,36 @@ import { PageTransition } from '../components/ui/PageTransition'
 import { WinModal } from '../components/WinModal'
 import { GameMenu } from '../components/GameMenu'
 
+// webkit-prefixed fullscreen types (Android Chrome, older browsers)
+type FSElement = HTMLElement & { webkitRequestFullscreen?: () => void }
+type FSDocument = Document & {
+  webkitFullscreenElement?: Element | null
+  webkitExitFullscreen?: () => void
+}
+
+function getFullscreenElement() {
+  return document.fullscreenElement ?? (document as FSDocument).webkitFullscreenElement ?? null
+}
+
+// requestFullscreen with webkit fallback; returns false if unsupported (iOS Safari)
+function requestFullscreen(): boolean {
+  const el = document.documentElement as FSElement
+  if (el.requestFullscreen) { el.requestFullscreen().catch(() => {}); return true }
+  if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen(); return true }
+  return false
+}
+
+function exitFullscreen() {
+  const doc = document as FSDocument
+  if (document.exitFullscreen) { document.exitFullscreen().catch(() => {}) }
+  else if (doc.webkitExitFullscreen) { doc.webkitExitFullscreen() }
+}
+
+const FULLSCREEN_SUPPORTED = !!(
+  (document.documentElement as FSElement).requestFullscreen ||
+  (document.documentElement as FSElement).webkitRequestFullscreen
+)
+
 export default function Game() {
   const game = useGameStore(s => s.game)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -24,18 +54,22 @@ export default function Game() {
     return () => { wakeLockRef.current?.release().catch(() => {}) }
   }, [wakeLockActive])
 
-  // Fullscreen change listener
+  // Fullscreen change listener — covers both standard and webkit events
   useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement)
+    const handler = () => setIsFullscreen(!!getFullscreenElement())
     document.addEventListener('fullscreenchange', handler)
-    return () => document.removeEventListener('fullscreenchange', handler)
+    document.addEventListener('webkitfullscreenchange', handler)
+    return () => {
+      document.removeEventListener('fullscreenchange', handler)
+      document.removeEventListener('webkitfullscreenchange', handler)
+    }
   }, [])
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {})
+    if (!getFullscreenElement()) {
+      requestFullscreen()
     } else {
-      document.exitFullscreen().catch(() => {})
+      exitFullscreen()
     }
   }
 
@@ -119,8 +153,8 @@ export default function Game() {
           </svg>
         </button>
 
-        {/* Fullscreen toggle */}
-        <button
+        {/* Fullscreen toggle — hidden on iOS Safari where the API is unsupported */}
+        {FULLSCREEN_SUPPORTED && <button
           type="button"
           onClick={toggleFullscreen}
           title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
@@ -145,7 +179,7 @@ export default function Game() {
               <path d="M5 15H1v-4" />
             </svg>
           )}
-        </button>
+        </button>}
 
         {/* Game menu */}
         <button
