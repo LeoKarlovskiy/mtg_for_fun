@@ -19,7 +19,7 @@ function makePlayers(count: number): PlayerSetup[] {
 }
 
 function startTestGame(playerCount = 2, life = 40) {
-  useGameStore.getState().startGame(makePlayers(playerCount), life)
+  useGameStore.getState().startGame(makePlayers(playerCount), life, '2-top-bottom')
   return useGameStore.getState().game!.players.map((p) => p.id)
 }
 

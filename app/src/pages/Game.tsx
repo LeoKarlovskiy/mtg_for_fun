@@ -1,16 +1,9 @@
 import { useEffect } from 'react'
 import { useGameStore } from '../store/gameStore'
+import { getOrientation, defaultOrientation } from '../lib/orientations'
 import { Square } from '../components/Square'
 import { PageTransition } from '../components/ui/PageTransition'
 import { WinModal } from '../components/WinModal'
-
-const GRID_CLASSES: Record<number, string> = {
-  2: 'grid-cols-2 grid-rows-1',
-  3: 'grid-cols-2 grid-rows-2',
-  4: 'grid-cols-2 grid-rows-2',
-  5: 'grid-cols-2 grid-rows-3',
-  6: 'grid-cols-3 grid-rows-2',
-}
 
 export default function Game() {
   const game = useGameStore(s => s.game)
@@ -24,7 +17,7 @@ export default function Game() {
 
   if (!game) return null
 
-  const gridClass = GRID_CLASSES[game.players.length] ?? 'grid-cols-2 grid-rows-2'
+  const orientation = getOrientation(game.orientationId) ?? defaultOrientation(game.players.length)
   const isGameActive = game.status === 'active'
 
   const opponents = (playerId: string) =>
@@ -34,16 +27,40 @@ export default function Game() {
 
   return (
     <PageTransition>
-      <div className={`grid ${gridClass} gap-2 p-2 min-h-screen bg-bg-base`}>
-        {game.players.map(player => (
-          <div key={player.id} className="relative border border-[var(--color-border-subtle)] rounded-sm overflow-hidden">
-            <Square
-              square={player}
-              opponents={opponents(player.id)}
-              isGameActive={isGameActive}
-            />
-          </div>
-        ))}
+      <div
+        className="gap-2 p-2 min-h-screen bg-bg-base"
+        style={{
+          display: 'grid',
+          gridTemplateAreas: orientation.gridStyle.gridTemplateAreas,
+          gridTemplateColumns: orientation.gridStyle.gridTemplateColumns,
+          gridTemplateRows: orientation.gridStyle.gridTemplateRows,
+        }}
+      >
+        {game.players.map((player, i) => {
+          const slot = orientation.slots[i]
+          return (
+            <div
+              key={player.id}
+              style={{ gridArea: slot.gridArea, position: 'relative', overflow: 'hidden' }}
+              className="border border-[var(--color-border-subtle)] rounded-sm"
+            >
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  transform: `rotate(${slot.rotation}deg)`,
+                  transformOrigin: 'center center',
+                }}
+              >
+                <Square
+                  square={player}
+                  opponents={opponents(player.id)}
+                  isGameActive={isGameActive}
+                />
+              </div>
+            </div>
+          )
+        })}
       </div>
       <WinModal open={game.status === 'complete'} />
     </PageTransition>

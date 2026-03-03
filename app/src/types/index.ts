@@ -13,6 +13,7 @@ export type Game = {
   startedAt: number
   endedAt?: number
   startingLife: number
+  orientationId: string
   players: Square[]
   winner?: string
   status: 'active' | 'complete'

@@ -4,7 +4,7 @@ import { isEliminated, findWinner } from '../lib/elimination'
 
 interface GameStore {
   game: Game | null
-  startGame: (players: PlayerSetup[], startingLife: number) => void
+  startGame: (players: PlayerSetup[], startingLife: number, orientationId: string) => void
   adjustLife: (playerId: string, delta: number) => void
   addCommanderDamage: (targetId: string, sourceId: string) => void
   resetGame: () => void
@@ -45,7 +45,7 @@ export const useGameStore = create<GameStore>((set, get) => {
   return {
     game: null,
 
-    startGame: (players, startingLife) => {
+    startGame: (players, startingLife, orientationId) => {
       const squares: Square[] = players.map(p => ({
         id: crypto.randomUUID(),
         name: p.name,
@@ -59,6 +59,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           id: crypto.randomUUID(),
           startedAt: Date.now(),
           startingLife,
+          orientationId,
           players: squares,
           status: 'active',
         },

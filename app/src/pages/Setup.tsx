@@ -1,12 +1,92 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '../store/gameStore'
 import { processAvatar } from '../lib/imageUtils'
+import { getOrientationsForCount, defaultOrientation } from '../lib/orientations'
+import type { OrientationDef } from '../lib/orientations'
 import { PageTransition } from '../components/ui/PageTransition'
 import { Button } from '../components/ui/Button'
 import { PlayerAvatar } from '../components/PlayerAvatar'
 
 type PlayerDraft = { id: string; name: string; avatar?: string }
+
+function OrientationOption({
+  orientation,
+  selected,
+  onSelect,
+}: {
+  orientation: OrientationDef
+  selected: boolean
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={[
+        'flex flex-col items-center gap-2 p-2 rounded-sm border transition-all',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-bright',
+        selected
+          ? 'border-gold-bright bg-[rgba(212,160,23,0.08)]'
+          : 'border-[var(--color-border-subtle)] hover:border-gold-muted',
+      ].join(' ')}
+      style={{ width: '90px' }}
+    >
+      {/* Mini diagram */}
+      <div
+        style={{
+          width: '64px',
+          height: '48px',
+          display: 'grid',
+          gridTemplateAreas: orientation.gridStyle.gridTemplateAreas,
+          gridTemplateColumns: orientation.gridStyle.gridTemplateColumns,
+          gridTemplateRows: orientation.gridStyle.gridTemplateRows,
+          gap: '2px',
+        }}
+      >
+        {orientation.slots.map((slot, i) => (
+          <div
+            key={i}
+            style={{
+              gridArea: slot.gridArea,
+              background: 'rgba(212,160,23,0.15)',
+              border: '1px solid rgba(212,160,23,0.35)',
+              borderRadius: '2px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <span
+              style={{
+                transform: `rotate(${slot.rotation}deg)`,
+                display: 'block',
+                fontSize: '7px',
+                color: 'var(--color-gold-bright, #D4A017)',
+                fontFamily: 'serif',
+                fontWeight: 700,
+                lineHeight: 1,
+              }}
+            >
+              P{i + 1}
+            </span>
+          </div>
+        ))}
+      </div>
+      {/* Label */}
+      <span
+        className="text-center font-serif"
+        style={{
+          fontSize: '9px',
+          color: selected ? 'var(--color-gold-bright, #D4A017)' : 'var(--color-text-secondary)',
+          lineHeight: 1.3,
+        }}
+      >
+        {orientation.label}
+      </span>
+    </button>
+  )
+}
 
 export default function Setup() {
   const navigate = useNavigate()
@@ -15,6 +95,12 @@ export default function Setup() {
     { id: crypto.randomUUID(), name: '' },
   ])
   const [startingLife, setStartingLife] = useState<20 | 30 | 40>(40)
+  const [orientationId, setOrientationId] = useState(() => defaultOrientation(2).id)
+
+  // Reset orientation when player count changes
+  useEffect(() => {
+    setOrientationId(defaultOrientation(players.length).id)
+  }, [players.length])
 
   const canStart = players.length >= 2 && players.every(p => p.name.trim().length > 0)
 
@@ -40,7 +126,8 @@ export default function Setup() {
   const handleStart = () => {
     useGameStore.getState().startGame(
       players.map(p => ({ name: p.name.trim(), avatar: p.avatar })),
-      startingLife
+      startingLife,
+      orientationId,
     )
     navigate('/game')
   }
@@ -121,6 +208,21 @@ export default function Setup() {
                 >
                   {life}
                 </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Orientation picker */}
+          <div className="mb-8">
+            <p className="text-label text-center mb-3">Orientation</p>
+            <div className="flex flex-wrap justify-center gap-3">
+              {getOrientationsForCount(players.length).map(o => (
+                <OrientationOption
+                  key={o.id}
+                  orientation={o}
+                  selected={orientationId === o.id}
+                  onSelect={() => setOrientationId(o.id)}
+                />
               ))}
             </div>
           </div>
