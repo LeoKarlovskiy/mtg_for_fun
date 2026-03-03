@@ -54,6 +54,16 @@ export default function Game() {
   const [wakeLockActive, setWakeLockActive] = useState(true)
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
 
+  // Prevent browser back gesture — navigation only via menu/win modal
+  useEffect(() => {
+    window.history.pushState(null, '', window.location.href)
+    const handlePopState = () => {
+      window.history.pushState(null, '', window.location.href)
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
   // Wake lock — controlled by toggle
   useEffect(() => {
     if (!wakeLockActive) {
