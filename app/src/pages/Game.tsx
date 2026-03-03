@@ -31,10 +31,21 @@ function exitFullscreen() {
   else if (doc.webkitExitFullscreen) { doc.webkitExitFullscreen() }
 }
 
-const FULLSCREEN_SUPPORTED = !!(
-  (document.documentElement as FSElement).requestFullscreen ||
-  (document.documentElement as FSElement).webkitRequestFullscreen
-)
+// iOS 16.4+ supports requestFullscreen in standalone (PWA) mode
+function isStandalonePWA() {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    ('standalone' in window.navigator &&
+      (window.navigator as { standalone?: boolean }).standalone === true)
+  )
+}
+
+const FULLSCREEN_SUPPORTED =
+  isStandalonePWA() ||
+  !!(
+    (document.documentElement as FSElement).requestFullscreen ||
+    (document.documentElement as FSElement).webkitRequestFullscreen
+  )
 
 export default function Game() {
   const game = useGameStore(s => s.game)
