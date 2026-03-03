@@ -1,0 +1,131 @@
+:root {
+  /* Backgrounds */
+  --color-bg-base:        #0d0d0d;
+  --color-bg-surface:     #1a1818;
+  --color-bg-raised:      #231f1f;
+  --color-bg-overlay:     rgba(0, 0, 0, 0.72);
+
+  /* Stone texture overlay */
+  --stone-texture-opacity: 0.04;
+
+  /* Dragon Red */
+  --color-red-ember:      #CC2200;
+  --color-red-deep:       #8B0000;
+  --color-red-flare:      #FF4422;
+  --color-red-dim:        #4A1010;
+
+  /* Aged Gold */
+  --color-gold-bright:    #D4A017;
+  --color-gold-muted:     #B8860B;
+  --color-gold-dim:       #6B5000;
+  --color-gold-glow:      rgba(212, 160, 23, 0.35);
+
+  /* Text */
+  --color-text-primary:   #F5ECD7;
+  --color-text-secondary: #B0A090;
+  --color-text-disabled:  #5C5048;
+  --color-text-gold:      #D4A017;
+  --color-text-danger:    #FF4422;
+
+  /* Borders */
+  --color-border-card:    #B8860B;
+  --color-border-inner:   #4A3800;
+  --color-border-subtle:  #2A2020;
+
+  /* Life total specific */
+  --color-life-high:      #F5ECD7;
+  --color-life-mid:       #D4A017;
+  --color-life-low:       #CC2200;
+}
+
+.text-life {
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  font-size: 6rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+  text-shadow: 0 0 24px rgba(212, 160, 23, 0.3);
+  transition: color 0.4s ease;
+}
+
+.text-life[data-state="mid"]  { color: var(--color-life-mid); }
+.text-life[data-state="low"]  { color: var(--color-life-low); text-shadow: 0 0 24px rgba(204,34,0,0.5); }
+
+.text-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.text-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-weight: 700;
+  color: var(--color-gold-bright);
+  text-shadow: 0 0 16px rgba(212,160,23,0.4);
+}
+
+.player-square {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border-card);
+  outline: 3px solid var(--color-border-inner);
+  outline-offset: -4px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #B8860B, 0 0 0 3px #4A3800, 0 4px 24px rgba(0,0,0,0.8);
+  position: relative;
+  overflow: hidden;
+}
+
+.player-square::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('/textures/stone.png');
+  opacity: 0.04;
+  pointer-events: none;
+}
+
+.player-square[data-eliminated="true"] {
+  border-color: var(--color-red-deep);
+  outline-color: var(--color-red-dim);
+  filter: saturate(0.3) brightness(0.6);
+}
+
+.player-square[data-eliminated="true"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(139, 0, 0, 0.15);
+  pointer-events: none;
+}
+
+.commander-damage {
+  border-top: 1px solid var(--color-border-subtle);
+  padding-top: 0.5rem;
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.cmd-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.cmd-counter__value {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--color-text-primary);
+}
+
+.cmd-counter__value[data-danger="true"] {
+  color: var(--color-red-ember);
+  text-shadow: 0 0 8px rgba(204,34,0,0.5);
+}

@@ -1,0 +1,24 @@
+# Environment secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# Safe to commit
+# .env.schema  — schema only, no values
+# env.d.ts     — generated types, no values
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.vite/
+
+# claude-flow runtime
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+.swarm/
+
+# OS
+.DS_Store
