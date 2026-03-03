@@ -9,7 +9,7 @@ import History from './pages/History'
 import type { ReactNode } from 'react'
 
 type RequireGameProps = {
-  require: 'active' | 'complete'
+  require: 'active' | 'complete' | 'started'
   children: ReactNode
 }
 
@@ -17,6 +17,7 @@ function RequireGame({ require, children }: RequireGameProps) {
   const status = useGameStore(s => s.game?.status ?? null)
   if (require === 'active' && status !== 'active') return <Navigate to="/" replace />
   if (require === 'complete' && status !== 'complete') return <Navigate to="/" replace />
+  if (require === 'started' && status === null) return <Navigate to="/" replace />
   return <>{children}</>
 }
 
@@ -30,7 +31,7 @@ function AnimatedRoutes() {
         <Route
           path="/game"
           element={
-            <RequireGame require="active">
+            <RequireGame require="started">
               <Game />
             </RequireGame>
           }
