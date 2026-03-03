@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '../store/gameStore'
 import { Square } from '../components/Square'
 import { PageTransition } from '../components/ui/PageTransition'
+import { WinModal } from '../components/WinModal'
 
 const GRID_CLASSES: Record<number, string> = {
   2: 'grid-cols-2 grid-rows-1',
@@ -13,7 +13,6 @@ const GRID_CLASSES: Record<number, string> = {
 }
 
 export default function Game() {
-  const navigate = useNavigate()
   const game = useGameStore(s => s.game)
 
   // Wake lock
@@ -22,11 +21,6 @@ export default function Game() {
     navigator.wakeLock?.request('screen').then(wl => { wakeLock = wl }).catch(() => {})
     return () => { wakeLock?.release().catch(() => {}) }
   }, [])
-
-  // Navigate to win when complete
-  useEffect(() => {
-    if (game?.status === 'complete') navigate('/win')
-  }, [game?.status, navigate])
 
   if (!game) return null
 
@@ -51,6 +45,7 @@ export default function Game() {
           </div>
         ))}
       </div>
+      <WinModal open={game.status === 'complete'} />
     </PageTransition>
   )
 }

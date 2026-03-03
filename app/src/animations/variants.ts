@@ -60,6 +60,21 @@ export const winGlowVariants: Variants = {
   },
 }
 
+export const modalBackdropVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.4, ease: 'easeOut' } },
+}
+
+export const modalPanelVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.88, y: 20 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { duration: 0.5, delay: 0.15, ease: [0.22, 1, 0.36, 1] },
+  },
+}
+
 export const pageVariants: Variants = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
