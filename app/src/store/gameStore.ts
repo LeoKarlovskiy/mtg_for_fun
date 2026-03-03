@@ -91,6 +91,7 @@ export const useGameStore = create<GameStore>((set, get) => {
             p.id === targetId
               ? {
                   ...p,
+                  life: Math.max(0, p.life - 1),
                   commanderDamage: {
                     ...p.commanderDamage,
                     [sourceId]: (p.commanderDamage[sourceId] ?? 0) + 1,

@@ -78,6 +78,21 @@ describe('adjustLife', () => {
 })
 
 describe('addCommanderDamage', () => {
+  it('decreases target life by 1 when commander damage is added', () => {
+    const [p1, p2] = startTestGame(2, 40)
+    useGameStore.getState().addCommanderDamage(p1, p2)
+    const player = useGameStore.getState().game!.players.find((p) => p.id === p1)!
+    expect(player.life).toBe(39)
+    expect(player.commanderDamage[p2]).toBe(1)
+  })
+
+  it('clamps life at 0 when commander damage is applied below zero', () => {
+    const [p1, p2] = startTestGame(2, 1)
+    useGameStore.getState().addCommanderDamage(p1, p2)
+    const player = useGameStore.getState().game!.players.find((p) => p.id === p1)!
+    expect(player.life).toBe(0)
+  })
+
   it('eliminates a player after 21 commander damage from one source', () => {
     const [p1, p2] = startTestGame(2, 40)
     for (let i = 0; i < 21; i++) {
@@ -86,6 +101,13 @@ describe('addCommanderDamage', () => {
     const player = useGameStore.getState().game!.players.find((p) => p.id === p1)!
     expect(player.isEliminated).toBe(true)
     expect(player.commanderDamage[p2]).toBe(21)
+  })
+
+  it('does not affect the life of other players', () => {
+    const [p1, p2] = startTestGame(2, 40)
+    useGameStore.getState().addCommanderDamage(p1, p2)
+    const other = useGameStore.getState().game!.players.find((p) => p.id === p2)!
+    expect(other.life).toBe(40)
   })
 })
 
