@@ -1157,3 +1157,108 @@ export type LifeDelta = 1 | 5 | -1 | -5
 | Win page calling `addGame` twice in React StrictMode | `game-win-pages` agent must use a `useRef` guard |
 | PWA build fails due to missing icon files | Scaffold agent creates placeholder PNGs in Phase 0 |
 | Commander damage counter layout breaks at 5+ opponents | `game-components` agent must test layout with 5 opponent counters visible |
+
+---
+
+## Post-MVP Iterations
+
+> This section records all changes made after the initial v0.1 build was live on Vercel.
+> Each iteration lists the files changed, the reason, and the commit reference.
+
+---
+
+### Iteration 1 — Commander damage life deduction (2026-03-02)
+
+**Commit:** `49fdeaf`
+**Files:** `src/store/gameStore.ts`, `src/store/gameStore.test.ts`
+
+**Change:** `addCommanderDamage` now atomically applies both the commander damage increment and a `-1` life deduction to the target player in a single `set()` call.
+
+**Reason:** MTG rules: every point of commander damage is also direct damage. Previously the two trackers were decoupled, requiring manual life adjustment after each commander damage.
+
+**Tests added:** 3 new tests covering life deduction on commander damage, life clamping at 0, and no side-effects on other players' life totals.
+
+---
+
+### Bug Fix — Vercel 404 on deployment (2026-03-02)
+
+**Commit:** `5c49616`
+**Files:** `vercel.json` (moved to repo root)
+
+**Problem:** App deployed but all routes returned 404. The `vercel.json` was inside `app/` but Vercel reads config from the repo root. Additionally the build command and output directory had to be explicitly set since the Vite project lives in a subdirectory.
+
+**Fix:** Moved `vercel.json` to repo root with:
+```json
+{
+  "buildCommand": "cd app && npm install && npm run build",
+  "outputDirectory": "app/dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
+```
+
+---
+
+### Iteration 2 — Win modal replacing Win page (2026-03-02)
+
+**Commits:** `0b98257`, `ccdceda`, `21fd127`
+**Files created:** `src/components/WinModal.tsx`
+**Files modified:** `src/App.tsx`, `src/animations/variants.ts`
+
+**Change:** Removed the `/win` route. Win state now shows an inline portal modal over the game screen with the message "[Player] claims the throne." and two buttons: "Start another" (resets game) and "Home screen" (clears game + navigates to `/`).
+
+**Bug 1 — Modal not visible:**
+`PageTransition` applies a CSS `transform` (y-offset animation), which creates a new stacking context. Any `position: fixed` descendant is trapped within that ancestor's bounds, so the modal was invisible (positioned relative to the transformed element, not the viewport).
+Fix: render the modal via `createPortal(…, document.body)`.
+
+**Bug 2 — Page redirected before modal could show:**
+The `RequireGame` guard on `/game` had `require="active"`. The instant `game.status` changed to `'complete'`, the guard fired and redirected to `/`, unmounting the modal before it appeared.
+Fix: added a `'started'` guard type to `RequireGame` that only redirects when `game === null`, allowing both active and complete games to stay on the game route.
+
+**Variants added:** `modalBackdropVariants`, `modalPanelVariants` to `src/animations/variants.ts`.
+
+---
+
+### Iteration 3 — Orientation picker (2026-03-02)
+
+**Commit:** `b4c7ed6`
+**Files created:** `src/lib/orientations.ts`
+**Files modified:** `src/types/index.ts`, `src/store/gameStore.ts`, `src/store/gameStore.test.ts`, `src/pages/Setup.tsx`, `src/pages/Game.tsx`
+
+**Change:** Added a player-card orientation system. 10 layout definitions span 2–6 player counts, each specifying CSS `grid-template-areas`/`columns`/`rows` and a per-player rotation in degrees. Setup screen shows a visual picker with mini grid diagrams. Game screen renders tiles at the specified `gridArea` with a rotation wrapper `div`.
+
+**Type change:** `Game.orientationId: string` added. `startGame` updated to accept `orientationId` as a third argument.
+
+---
+
+### Iteration 4 — In-game controls: menu, fullscreen, wake lock (2026-03-03)
+
+**Commits:** `888d68f`, `0406d23`, `5a3f60a`
+**Files created:** `src/components/GameMenu.tsx`
+**Files modified:** `src/pages/Game.tsx`
+
+**Changes:**
+
+1. **GameMenu:** New portal modal component. Opened by a hamburger button. "Restart" calls `resetGame()` and closes; "Home" calls `clearGame()` + `navigate('/')`. Backdrop click dismisses.
+
+2. **Wake lock toggle:** Replaced the auto-on `useEffect` wake lock with a user-controlled toggle button (☀). Defaults to on. State managed via `useState(true)` + `useRef<WakeLockSentinel>`.
+
+3. **Fullscreen toggle:** Button calls `requestFullscreen` with `webkitRequestFullscreen` as fallback. State tracked via `fullscreenchange` and `webkitfullscreenchange` events. Hidden via `FULLSCREEN_SUPPORTED` flag when unsupported.
+
+**Bug fix — Fullscreen on Android Chrome:**
+The unprefixed `requestFullscreen` was failing silently on Android Chrome, which still required the `webkit` prefix. Fixed by adding webkit-prefixed helpers (`requestFullscreen`, `exitFullscreen`, `getFullscreenElement`) with TypeScript intersection types for the prefixed properties.
+
+**Bug fix — Fullscreen button missing on iOS PWA:**
+The `FULLSCREEN_SUPPORTED` check correctly returned `false` for all iOS browsers (WebKit restriction). But iOS 16.4+ supports `requestFullscreen` when running as an installed home-screen PWA. Fixed by adding `isStandalonePWA()` detection (via `display-mode: standalone` media query + `navigator.standalone`) and including it in the `FULLSCREEN_SUPPORTED` condition.
+
+**Architecture note:** The floating controls div is a **sibling** of `<PageTransition>` in the JSX return, not a descendant. This avoids the transform stacking-context trap. `GameMenu` still uses `createPortal` for the same reason as `WinModal`.
+
+---
+
+### Iteration 5 — Back gesture prevention (2026-03-03)
+
+**Commit:** `b618a69`
+**Files modified:** `src/pages/Game.tsx`
+
+**Change:** Added a `useEffect` that pushes a dummy `history` entry on mount and re-pushes on every `popstate` event, trapping the user on the game screen. The listener is cleaned up on unmount (only reached after explicit `navigate('/')` via menu or win modal).
+
+**Reason:** On iOS (PWA and browser) and Android, a swipe-back / hardware back button would navigate away from a live game, losing all state. The only intended exit paths are the in-game menu and the win modal.

@@ -1,8 +1,8 @@
 # Software Architecture Plan: MTG Commander Life Tracker ("Dragon's Table")
 
-**Version:** 0.1
-**Date:** 2026-03-02
-**Status:** Draft — pending implementation
+**Version:** 0.2
+**Date:** 2026-03-03
+**Status:** Live — https://mtg-for-fun.vercel.app
 **Deployment target:** Vercel (static SPA)
 
 ---
@@ -15,6 +15,12 @@
 | PWA | Yes — vite-plugin-pwa | Offline play at the table; installable to home screen |
 | Avatar storage | Resize to 200×200 + base64 in localStorage | Simplest path; compressed to ~20 KB per avatar |
 | Testing | Vitest + React Testing Library | Vite-native; unit-test game logic and store actions |
+| Win UI | Inline portal modal on `/game` (not a `/win` route) | Avoids route guard conflict; game state stays mounted when status becomes `'complete'` |
+| Modal rendering | `createPortal(…, document.body)` | `PageTransition` applies CSS `transform` which creates a new stacking context, trapping `position: fixed` descendants |
+| Orientation | `lib/orientations.ts` with CSS grid-template-areas + per-slot rotation | Pure CSS; no layout library; easily extended |
+| Floating controls | Sibling of `PageTransition` (not a descendant) | Avoids transform stacking-context issue; `position: fixed` works correctly |
+| Back gesture block | `pushState` + `popstate` listener | No React Router dependency; works on all platforms |
+| Vercel config | Root-level `vercel.json` with `buildCommand: "cd app && ..."` | App is in a subdirectory; Vercel must be told where to build from |
 
 ---
 
@@ -74,7 +80,7 @@ mtg-for-fun/
 │
 ├── src/
 │   ├── types/
-│   │   └── index.ts                ← Square, Game, GameHistory (from PRD)
+│   │   └── index.ts                ← Square, Game (+ startingLife, orientationId), GameHistory
 │   │
 │   ├── store/
 │   │   ├── gameStore.ts            ← active game (Zustand, in-memory)
@@ -82,26 +88,29 @@ mtg-for-fun/
 │   │
 │   ├── lib/
 │   │   ├── elimination.ts          ← pure elimination/win logic
-│   │   └── imageUtils.ts           ← avatar resize + base64 encode (Canvas API)
+│   │   ├── imageUtils.ts           ← avatar resize + base64 encode (Canvas API)
+│   │   └── orientations.ts         ← 10 layout variants for 2–6 players (CSS grid + rotation)
 │   │
 │   ├── animations/
-│   │   └── variants.ts             ← all Framer Motion variants (from STYLE_GUIDE.md)
+│   │   └── variants.ts             ← all Framer Motion variants
 │   │
 │   ├── components/
 │   │   ├── Square.tsx              ← player tile
 │   │   ├── LifeControls.tsx        ← +5/+1/-1/-5 buttons
 │   │   ├── CommanderDamage.tsx     ← per-opponent damage counters
 │   │   ├── PlayerAvatar.tsx        ← avatar display + upload input
+│   │   ├── WinModal.tsx            ← portal modal shown on game completion
+│   │   ├── GameMenu.tsx            ← portal modal for stop-game actions (Restart / Home)
 │   │   └── ui/
 │   │       ├── Button.tsx          ← primary / secondary / life variants
 │   │       └── PageTransition.tsx  ← Framer Motion page wrapper
 │   │
 │   ├── pages/
 │   │   ├── Landing.tsx
-│   │   ├── Setup.tsx
-│   │   ├── Game.tsx
-│   │   ├── Win.tsx
+│   │   ├── Setup.tsx               ← includes orientation picker
+│   │   ├── Game.tsx                ← includes floating controls + back-gesture trap
 │   │   └── History.tsx
+│   │   (Win.tsx removed — win state handled by WinModal portal)
 │   │
 │   ├── styles/
 │   │   └── tokens.css              ← CSS custom properties (from STYLE_GUIDE.md)
@@ -130,20 +139,22 @@ React Router v6 with `BrowserRouter`. All routes render inside `AnimatePresence`
     <Routes location={location} key={location.pathname}>
       <Route path="/"        element={<Landing />} />
       <Route path="/setup"   element={<Setup />} />
-      <Route path="/game"    element={<Game />} />
-      <Route path="/win"     element={<Win />} />
+      <Route path="/game"    element={<RequireGame require="started"><Game /></RequireGame>} />
       <Route path="/history" element={<History />} />
     </Routes>
   </AnimatePresence>
 </BrowserRouter>
 ```
 
+The `/win` route was removed. Win state is handled by `WinModal` rendered inside the `/game` route, which stays mounted when `game.status` becomes `'complete'`.
+
 ### Route guards
 
-| Route | Guard |
-|---|---|
-| `/game` | Redirect to `/` if `gameStore.game` is null |
-| `/win` | Redirect to `/` if `gameStore.game?.status !== 'complete'` |
+| Route | Guard | Redirect |
+|---|---|---|
+| `/game` | `require="started"` — redirect if `game === null` | `/` |
+
+`RequireGame` has three guard types: `'active'` (only allows active games), `'complete'` (only allows completed), and `'started'` (allows both active and complete, redirects only when `game` is `null`). The game route uses `'started'` so the WinModal can render when the game ends without being ejected by the guard.
 
 Implemented as a lightweight `<RequireGame>` wrapper component — no external auth library needed.
 
@@ -160,22 +171,22 @@ interface GameStore {
   game: Game | null
 
   // Setup → Game
-  startGame: (players: PlayerSetup[], startingLife: number) => void
+  startGame: (players: PlayerSetup[], startingLife: number, orientationId: string) => void
 
   // In-game actions
   adjustLife: (playerId: string, delta: number) => void
   addCommanderDamage: (targetId: string, sourceId: string) => void
-
-  // Internal — called by adjustLife / addCommanderDamage after mutation
-  checkElimination: (playerId: string) => void
+  // ^ also deducts 1 life from target atomically
 
   // End of game
-  resetGame: () => void    // Play Again: reset life totals, same players
-  clearGame: () => void    // New Game: clear everything
+  resetGame: () => void    // Restart: reset life totals, same players
+  clearGame: () => void    // Home: clear everything
 }
 ```
 
-`adjustLife` and `addCommanderDamage` both call `checkElimination` internally after updating state. If `findWinner` returns a player, the store sets `game.status = 'complete'` and calls the history store's `addGame`.
+`adjustLife` and `addCommanderDamage` both call `_checkElimination` internally after updating state. If `findWinner` returns a player, the store sets `game.status = 'complete'`. History persistence is handled by `WinModal` (not the store) to avoid circular dependencies.
+
+`startGame` now accepts `orientationId: string` and stores it on the `Game` object. `addCommanderDamage` atomically applies both the damage increment and a `-1` life deduction to the target player.
 
 ### `historyStore.ts` — completed games, persisted
 
@@ -242,13 +253,14 @@ Result is a `data:image/jpeg;base64,...` string stored directly on `Square.avata
 
 ## Animation
 
-All Framer Motion variants live in `src/animations/variants.ts` (already specified in `STYLE_GUIDE.md`). Components import from this single file.
+All Framer Motion variants live in `src/animations/variants.ts`. Components import from this single file.
 
 | Variant | Trigger |
 |---|---|
 | `lifeDeltaVariants` | Every +/− life tap |
 | `eliminationVariants` + `eliminationFlash` | Player hits 0 life or 21 commander damage |
-| `winOverlayVariants` + `winTitleVariants` + `winGlowVariants` | Win screen mount |
+| `winGlowVariants` | WinModal mount — perpetual golden glow on winner name |
+| `modalBackdropVariants` + `modalPanelVariants` | WinModal and GameMenu open/close |
 | `pageVariants` | Every route change (via `AnimatePresence`) |
 
 ---
@@ -297,20 +309,111 @@ export default defineConfig({
 
 ---
 
-## Screen Wake Lock
+## Orientations (`src/lib/orientations.ts`)
 
-Because players leave a device on the table for the duration of a game, the browser's auto-sleep will interrupt play. The Game screen should request a Screen Wake Lock on mount and release it on unmount.
+Defines 10 `OrientationDef` objects covering 2–6 player counts. Each definition includes:
 
 ```ts
-// In Game.tsx
+type SlotConfig = { rotation: 0 | 90 | 180 | 270; gridArea: string }
+type OrientationDef = {
+  id: string
+  label: string
+  playerCount: number
+  gridStyle: {
+    gridTemplateAreas: string
+    gridTemplateColumns: string
+    gridTemplateRows: string
+  }
+  slots: SlotConfig[]
+}
+```
+
+The Setup page renders a mini visual picker using each definition's `gridStyle` and `slots`. The Game page applies `gridStyle` as inline CSS and wraps each player tile in a `transform: rotate(Xdeg)` div.
+
+Rotation convention: Bottom-facing = 0°, Right-facing = 90°, Top-facing = 180°, Left-facing = 270°.
+
+---
+
+## Win Modal (`src/components/WinModal.tsx`)
+
+Rendered via `createPortal(…, document.body)` to escape the stacking context created by `PageTransition`'s CSS `transform`. Appears as a `position: fixed` overlay with `z-index: 50`.
+
+Saves the completed game to `historyStore.addGame` exactly once per game via a `useRef(saved)` guard (safe against React StrictMode double-invocation).
+
+---
+
+## Game Menu (`src/components/GameMenu.tsx`)
+
+Same portal pattern as WinModal (`z-index: 40`, below WinModal). Opened by the hamburger button in the floating controls bar. Backdrop click dismisses without action.
+
+---
+
+## Floating Controls
+
+Three icon buttons (`w-9 h-9`) rendered as a `position: fixed` div — a **sibling** of `<PageTransition>` in the JSX tree, not a descendant. This is critical: placing them inside `PageTransition` would trap `position: fixed` within the transformed ancestor's stacking context.
+
+```
+<>
+  <PageTransition>…game grid + WinModal…</PageTransition>
+  <div className="fixed bottom-3 right-3 z-30 flex gap-2">
+    {/* wake lock, fullscreen, menu buttons */}
+  </div>
+  <GameMenu … />
+</>
+```
+
+---
+
+## Screen Wake Lock
+
+Wake lock is now **user-controlled** (toggle button) rather than automatic. Defaults to `true` (on). Managed via `useState` + `useRef<WakeLockSentinel>` in `Game.tsx`.
+
+```ts
 useEffect(() => {
-  let wakeLock: WakeLockSentinel | null = null
-  navigator.wakeLock?.request('screen').then(wl => { wakeLock = wl })
-  return () => { wakeLock?.release() }
-}, [])
+  if (!wakeLockActive) {
+    wakeLockRef.current?.release().catch(() => {})
+    wakeLockRef.current = null
+    return
+  }
+  navigator.wakeLock?.request('screen').then(wl => { wakeLockRef.current = wl }).catch(() => {})
+  return () => { wakeLockRef.current?.release().catch(() => {}) }
+}, [wakeLockActive])
 ```
 
 No external library needed. Supported in Chrome, Edge, and Safari 16.4+. Falls back silently if unavailable.
+
+---
+
+## Fullscreen API
+
+Uses `requestFullscreen` with `webkitRequestFullscreen` as a fallback for Android Chrome/Brave. State is tracked via `fullscreenchange` and `webkitfullscreenchange` events.
+
+Support detection at module load time:
+
+```ts
+const FULLSCREEN_SUPPORTED =
+  isStandalonePWA() ||     // iOS 16.4+ PWA standalone supports it
+  !!(el.requestFullscreen || el.webkitRequestFullscreen)
+```
+
+The fullscreen button is hidden entirely when unsupported (iOS browsers in regular tab context).
+
+---
+
+## Back Gesture Prevention
+
+On game mount, a dummy `pushState` entry is injected and a `popstate` listener re-pushes on every back event:
+
+```ts
+useEffect(() => {
+  window.history.pushState(null, '', window.location.href)
+  const handler = () => window.history.pushState(null, '', window.location.href)
+  window.addEventListener('popstate', handler)
+  return () => window.removeEventListener('popstate', handler)
+}, [])
+```
+
+The listener is cleaned up when the component unmounts (after `navigate('/')` from menu or win modal). Intentional exits via React Router's `navigate()` are push operations and do not fire `popstate`, so they are unaffected.
 
 ---
 
