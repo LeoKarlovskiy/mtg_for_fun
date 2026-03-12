@@ -136,7 +136,7 @@ export default function Setup() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-bg-base flex flex-col items-center justify-start px-4 py-8">
+      <div className="min-h-screen bg-bg-base flex flex-col items-center justify-start px-4 pb-8" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2rem)' }}>
         <div className="w-full max-w-md">
           <button
             onClick={() => navigate('/')}

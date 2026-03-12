@@ -50,6 +50,7 @@ export default function Win() {
     <PageTransition>
       <motion.div
         className="min-h-screen bg-bg-base flex flex-col items-center justify-center gap-10 px-6"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
         variants={winOverlayVariants}
         initial="initial"
         animate="animate"

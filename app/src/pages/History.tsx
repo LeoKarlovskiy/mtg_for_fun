@@ -9,7 +9,7 @@ export default function History() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-bg-base px-4 py-8">
+      <div className="min-h-screen bg-bg-base px-4 pb-8" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2rem)' }}>
         <div className="max-w-md mx-auto">
           <button
             onClick={() => navigate('/')}

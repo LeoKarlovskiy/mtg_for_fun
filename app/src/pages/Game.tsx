@@ -111,6 +111,7 @@ export default function Game() {
           className="gap-2 p-2 min-h-screen bg-bg-base"
           style={{
             display: 'grid',
+            paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)',
             gridTemplateAreas: orientation.gridStyle.gridTemplateAreas,
             gridTemplateColumns: orientation.gridStyle.gridTemplateColumns,
             gridTemplateRows: orientation.gridStyle.gridTemplateRows,
@@ -146,7 +147,7 @@ export default function Game() {
       </PageTransition>
 
       {/* Floating controls — sibling of PageTransition, unaffected by its transform */}
-      <div className="fixed bottom-3 right-3 z-30 flex gap-2">
+      <div className="fixed right-3 z-30 flex gap-2" style={{ bottom: 'calc(env(safe-area-inset-bottom) + 0.75rem)' }}>
         {/* Wake lock toggle */}
         <button
           type="button"
