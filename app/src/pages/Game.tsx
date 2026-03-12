@@ -17,7 +17,6 @@ function getFullscreenElement() {
   return document.fullscreenElement ?? (document as FSDocument).webkitFullscreenElement ?? null
 }
 
-// requestFullscreen with webkit fallback; returns false if unsupported (iOS Safari)
 function requestFullscreen(): boolean {
   const el = document.documentElement as FSElement
   if (el.requestFullscreen) { el.requestFullscreen().catch(() => {}); return true }
@@ -31,17 +30,13 @@ function exitFullscreen() {
   else if (doc.webkitExitFullscreen) { doc.webkitExitFullscreen() }
 }
 
-// iOS 16.4+ supports requestFullscreen in standalone (PWA) mode
-function isStandalonePWA() {
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    ('standalone' in window.navigator &&
-      (window.navigator as { standalone?: boolean }).standalone === true)
-  )
-}
+// iOS never truly supports fullscreen (hide button entirely on iOS)
+const IS_IOS =
+  /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 
 const FULLSCREEN_SUPPORTED =
-  isStandalonePWA() ||
+  !IS_IOS &&
   !!(
     (document.documentElement as FSElement).requestFullscreen ||
     (document.documentElement as FSElement).webkitRequestFullscreen
@@ -147,14 +142,15 @@ export default function Game() {
       </PageTransition>
 
       {/* Floating controls — sibling of PageTransition, unaffected by its transform */}
-      <div className="fixed right-3 z-30 flex gap-2" style={{ bottom: 'calc(env(safe-area-inset-bottom) + 0.75rem)' }}>
+      <div className="fixed right-3 z-50 flex gap-2" style={{ bottom: 'calc(env(safe-area-inset-bottom) + 0.75rem)', pointerEvents: 'auto' }}>
         {/* Wake lock toggle */}
         <button
           type="button"
           onClick={() => setWakeLockActive(v => !v)}
           title={wakeLockActive ? 'Screen lock prevented — tap to allow' : 'Screen may lock — tap to prevent'}
+          style={{ touchAction: 'manipulation' }}
           className={[
-            'w-9 h-9 flex items-center justify-center rounded-sm border transition-colors',
+            'w-11 h-11 flex items-center justify-center rounded-sm border transition-colors',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-bright',
             wakeLockActive
               ? 'border-gold-muted text-gold-bright'
@@ -180,8 +176,9 @@ export default function Game() {
           type="button"
           onClick={toggleFullscreen}
           title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          style={{ touchAction: 'manipulation' }}
           className={[
-            'w-9 h-9 flex items-center justify-center rounded-sm border transition-colors',
+            'w-11 h-11 flex items-center justify-center rounded-sm border transition-colors',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-bright',
             'border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] hover:text-gold-bright hover:border-gold-muted',
           ].join(' ')}
@@ -208,8 +205,9 @@ export default function Game() {
           type="button"
           onClick={() => setMenuOpen(true)}
           title="Game menu"
+          style={{ touchAction: 'manipulation' }}
           className={[
-            'w-9 h-9 flex items-center justify-center rounded-sm border transition-colors',
+            'w-11 h-11 flex items-center justify-center rounded-sm border transition-colors',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-bright',
             'border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] hover:text-gold-bright hover:border-gold-muted',
           ].join(' ')}
