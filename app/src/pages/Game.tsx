@@ -171,35 +171,6 @@ export default function Game() {
           </svg>
         </button>
 
-        {/* Fullscreen toggle — hidden on iOS Safari where the API is unsupported */}
-        {FULLSCREEN_SUPPORTED && <button
-          type="button"
-          onClick={toggleFullscreen}
-          title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-          style={{ touchAction: 'manipulation' }}
-          className={[
-            'w-11 h-11 flex items-center justify-center rounded-sm border transition-colors',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-bright',
-            'border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] hover:text-gold-bright hover:border-gold-muted',
-          ].join(' ')}
-        >
-          {isFullscreen ? (
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M5 1v4H1" />
-              <path d="M15 5h-4V1" />
-              <path d="M1 11h4v4" />
-              <path d="M11 15v-4h4" />
-            </svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M1 5V1h4" />
-              <path d="M11 1h4v4" />
-              <path d="M15 11v4h-4" />
-              <path d="M5 15H1v-4" />
-            </svg>
-          )}
-        </button>}
-
         {/* Game menu */}
         <button
           type="button"
@@ -220,7 +191,13 @@ export default function Game() {
         </button>
       </div>
 
-      <GameMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <GameMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        fullscreenSupported={FULLSCREEN_SUPPORTED}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+      />
     </>
   )
 }

@@ -8,9 +8,12 @@ import { modalBackdropVariants, modalPanelVariants } from '../animations/variant
 type GameMenuProps = {
   open: boolean
   onClose: () => void
+  fullscreenSupported: boolean
+  isFullscreen: boolean
+  onToggleFullscreen: () => void
 }
 
-export function GameMenu({ open, onClose }: GameMenuProps) {
+export function GameMenu({ open, onClose, fullscreenSupported, isFullscreen, onToggleFullscreen }: GameMenuProps) {
   const navigate = useNavigate()
   const { resetGame, clearGame } = useGameStore()
 
@@ -54,6 +57,15 @@ export function GameMenu({ open, onClose }: GameMenuProps) {
               <Button variant="secondary" onClick={handleRestart} className="w-full">
                 Restart
               </Button>
+              {fullscreenSupported && (
+                <Button
+                  variant="secondary"
+                  onClick={() => { onToggleFullscreen(); onClose() }}
+                  className="w-full"
+                >
+                  {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                </Button>
+              )}
               <Button variant="secondary" onClick={handleHome} className="w-full">
                 Home
               </Button>

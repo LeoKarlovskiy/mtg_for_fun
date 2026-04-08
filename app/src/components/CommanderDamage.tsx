@@ -23,20 +23,36 @@ export function CommanderDamage({ targetPlayerId, opponents, commanderDamage, di
             <span className="cmd-counter__value" data-danger={danger ? 'true' : undefined}>
               {dmg}
             </span>
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => !disabled && useGameStore.getState().addCommanderDamage(targetPlayerId, opp.id)}
-              className={[
-                'text-xs text-[var(--color-text-secondary)]',
-                'border border-[var(--color-border-subtle)] rounded-sm w-5 h-5',
-                'hover:text-gold-bright hover:border-gold-muted',
-                'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gold-bright',
-                'disabled:opacity-30 disabled:cursor-not-allowed transition-all',
-              ].join(' ')}
-            >
-              +
-            </button>
+            <div className="flex gap-0.5">
+              <button
+                type="button"
+                disabled={disabled || dmg === 0}
+                onClick={() => !disabled && useGameStore.getState().removeCommanderDamage(targetPlayerId, opp.id)}
+                className={[
+                  'text-xs text-[var(--color-text-secondary)]',
+                  'border border-[var(--color-border-subtle)] rounded-sm w-5 h-5',
+                  'hover:text-gold-bright hover:border-gold-muted',
+                  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gold-bright',
+                  'disabled:opacity-30 disabled:cursor-not-allowed transition-all',
+                ].join(' ')}
+              >
+                −
+              </button>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => !disabled && useGameStore.getState().addCommanderDamage(targetPlayerId, opp.id)}
+                className={[
+                  'text-xs text-[var(--color-text-secondary)]',
+                  'border border-[var(--color-border-subtle)] rounded-sm w-5 h-5',
+                  'hover:text-gold-bright hover:border-gold-muted',
+                  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gold-bright',
+                  'disabled:opacity-30 disabled:cursor-not-allowed transition-all',
+                ].join(' ')}
+              >
+                +
+              </button>
+            </div>
           </div>
         )
       })}

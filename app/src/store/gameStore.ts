@@ -7,6 +7,7 @@ interface GameStore {
   startGame: (players: PlayerSetup[], startingLife: number, orientationId: string) => void
   adjustLife: (playerId: string, delta: number) => void
   addCommanderDamage: (targetId: string, sourceId: string) => void
+  removeCommanderDamage: (targetId: string, sourceId: string) => void
   resetGame: () => void
   clearGame: () => void
 }
@@ -103,6 +104,29 @@ export const useGameStore = create<GameStore>((set, get) => {
         },
       })
       _checkElimination(targetId)
+    },
+
+    removeCommanderDamage: (targetId, sourceId) => {
+      const { game } = get()
+      if (!game) return
+      set({
+        game: {
+          ...game,
+          players: game.players.map(p => {
+            if (p.id !== targetId) return p
+            const current = p.commanderDamage[sourceId] ?? 0
+            if (current === 0) return p
+            return {
+              ...p,
+              life: Math.min(100, p.life + 1),
+              commanderDamage: {
+                ...p.commanderDamage,
+                [sourceId]: current - 1,
+              },
+            }
+          }),
+        },
+      })
     },
 
     resetGame: () => {
